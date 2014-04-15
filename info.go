@@ -1,6 +1,7 @@
 package osin
 
 import (
+	"fmt"
 	"net/http"
 	"time"
 )
@@ -22,7 +23,7 @@ func (s *Server) HandleInfoRequest(w *Response, r *http.Request) *InfoRequest {
 	}
 
 	if ret.Code == "" {
-		w.SetError(E_INVALID_REQUEST, "")
+		w.SetError(E_INVALID_REQUEST, "Empty code")
 		return nil
 	}
 
@@ -31,7 +32,7 @@ func (s *Server) HandleInfoRequest(w *Response, r *http.Request) *InfoRequest {
 	// load access data
 	ret.AccessData, err = s.Storage.LoadAccess(ret.Code, r)
 	if err != nil {
-		w.SetError(E_INVALID_REQUEST, "")
+		w.SetError(E_INVALID_REQUEST, fmt.Sprintf("Error loading access data: [%v]", err))
 		w.InternalError = err
 		return nil
 	}

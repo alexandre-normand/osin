@@ -1,6 +1,7 @@
 package osin
 
 import (
+	"fmt"
 	"net/http"
 	"net/url"
 	"time"
@@ -133,7 +134,7 @@ func (s *Server) handleCodeRequest(w *Response, r *http.Request) *AuthorizeReque
 		ret.RedirectUri = ret.Client.RedirectUri
 	}
 	if err = ValidateUri(ret.Client.RedirectUri, ret.RedirectUri); err != nil {
-		w.SetErrorState(E_INVALID_REQUEST, "", ret.State)
+		w.SetErrorState(E_INVALID_REQUEST, fmt.Sprintf("Invalid redirect uri [%s]", ret.RedirectUri), ret.State)
 		w.InternalError = err
 		return nil
 	}

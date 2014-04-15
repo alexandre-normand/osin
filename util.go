@@ -3,6 +3,7 @@ package osin
 import (
 	"encoding/base64"
 	"errors"
+	"fmt"
 	"net/http"
 	"strings"
 )
@@ -56,12 +57,12 @@ func getClientAuth(w *Response, r *http.Request, allowQueryParams bool) *BasicAu
 
 	auth, err := CheckBasicAuth(r)
 	if err != nil {
-		w.SetError(E_INVALID_REQUEST, "")
+		w.SetError(E_INVALID_REQUEST, fmt.Sprintf("Basic Auth failed: [%v]", err))
 		w.InternalError = err
 		return nil
 	}
 	if auth == nil {
-		w.SetError(E_INVALID_REQUEST, "")
+		w.SetError(E_INVALID_REQUEST, "Not authorized")
 		w.InternalError = errors.New("Client authentication not sent")
 		return nil
 	}
