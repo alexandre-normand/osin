@@ -1,6 +1,7 @@
 package osin
 
 import (
+	"fmt"
 	"net/http"
 	"time"
 )
@@ -94,17 +95,17 @@ func (s *Server) HandleAccessRequest(w *Response, r *http.Request) *AccessReques
 	// Only allow GET or POST
 	if r.Method == "GET" {
 		if !s.Config.AllowGetAccessRequest {
-			w.SetError(E_INVALID_REQUEST, "")
+			w.SetError(E_INVALID_REQUEST, "GET request is not allowed")
 			return nil
 		}
 	} else if r.Method != "POST" {
-		w.SetError(E_INVALID_REQUEST, "")
+		w.SetError(E_INVALID_REQUEST, fmt.Sprintf("Invalid method [%s], only GET and POST requests are allowed", r.Method))
 		return nil
 	}
 
 	err := r.ParseForm()
 	if err != nil {
-		w.SetError(E_INVALID_REQUEST, "")
+		w.SetError(E_INVALID_REQUEST, fmt.Sprintf("Error parsing form: [%v]", err))
 		return nil
 	}
 
@@ -185,12 +186,12 @@ func (s *Server) handleAuthorizationCodeRequest(w *Response, r *http.Request) *A
 		ret.RedirectUri = ret.Client.RedirectUri
 	}
 	if err = ValidateUri(ret.Client.RedirectUri, ret.RedirectUri); err != nil {
-		w.SetError(E_INVALID_REQUEST, "")
+		w.SetError(E_INVALID_REQUEST, fmt.Sprintf("Invalid RedirectUri: [%s]", ret.RedirectUri))
 		w.InternalError = err
 		return nil
 	}
 	if ret.AuthorizeData.RedirectUri != ret.RedirectUri {
-		w.SetError(E_INVALID_REQUEST, "")
+		w.SetError(E_INVALID_REQUEST, fmt.Sprintf("Mismatch between authorize data's redirect uri [%s] and token's redirect uri [%s]", ret.AuthorizeData.RedirectUri, ret.RedirectUri))
 		return nil
 	}
 
