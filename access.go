@@ -123,7 +123,7 @@ func (s *Server) HandleAccessRequest(w *Response, r *http.Request) *AccessReques
 		}
 	}
 
-	w.SetError(E_UNSUPPORTED_GRANT_TYPE, "")
+	w.SetError(E_UNSUPPORTED_GRANT_TYPE, fmt.Sprintf("Unsupported grant type [%s]", grantType))
 	return nil
 }
 
