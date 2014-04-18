@@ -238,17 +238,17 @@ func (s *Server) handleRefreshTokenRequest(w *Response, r *http.Request) *Access
 		return nil
 	}
 	if ret.AccessData.Client == nil {
-		w.SetError(E_UNAUTHORIZED_CLIENT, "")
+		w.SetError(E_UNAUTHORIZED_CLIENT, fmt.Sprintf("No client for access data: [%v]", ret.AccessData))
 		return nil
 	}
 	if ret.AccessData.Client.RedirectUri == "" {
-		w.SetError(E_UNAUTHORIZED_CLIENT, "")
+		w.SetError(E_UNAUTHORIZED_CLIENT, fmt.Sprintf("No redirectURI for access data: [%v]", ret.AccessData))
 		return nil
 	}
 
 	// client must be the same as the previous token
 	if ret.AccessData.Client.Id != ret.Client.Id {
-		w.SetError(E_INVALID_CLIENT, "")
+		w.SetError(E_INVALID_CLIENT, fmt.Sprintf("Client id doesn't match, expected [%s] but got [%s]", ret.Client.Id, ret.AccessData.Client.Id))
 		return nil
 
 	}
@@ -403,15 +403,15 @@ func getClient(auth *BasicAuth, storage Storage, w *Response, r *http.Request) *
 		return nil
 	}
 	if client == nil {
-		w.SetError(E_UNAUTHORIZED_CLIENT, "")
+		w.SetError(E_UNAUTHORIZED_CLIENT, fmt.Sprintf("Client for id/username: [%s]", auth.Username))
 		return nil
 	}
 	if client.Secret != auth.Password {
-		w.SetError(E_UNAUTHORIZED_CLIENT, "")
+		w.SetError(E_UNAUTHORIZED_CLIENT, fmt.Sprintf("Mismatched client secret, expected [%s] but got [%s]", client.Secret, auth.Password))
 		return nil
 	}
 	if client.RedirectUri == "" {
-		w.SetError(E_UNAUTHORIZED_CLIENT, "")
+		w.SetError(E_UNAUTHORIZED_CLIENT, fmt.Sprintf("Missing redirect uri for client id [%s]", auth.Username))
 		return nil
 	}
 	return client
