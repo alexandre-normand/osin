@@ -163,15 +163,15 @@ func (s *Server) handleAuthorizationCodeRequest(w *Response, r *http.Request) *A
 		return nil
 	}
 	if ret.AuthorizeData.Client == nil {
-		w.SetError(E_UNAUTHORIZED_CLIENT, "")
+		w.SetError(E_UNAUTHORIZED_CLIENT, fmt.Sprintf("No client for authorize data: [%v]", ret.AuthorizeData))
 		return nil
 	}
 	if ret.AuthorizeData.Client.RedirectUri == "" {
-		w.SetError(E_UNAUTHORIZED_CLIENT, "")
+		w.SetError(E_UNAUTHORIZED_CLIENT, fmt.Sprintf("No redirectURI for authorize data: [%v]", ret.AuthorizeData))
 		return nil
 	}
 	if ret.AuthorizeData.IsExpired() {
-		w.SetError(E_INVALID_GRANT, "")
+		w.SetError(E_INVALID_GRANT, fmt.Sprintf("Expired authorize data: [%v]", ret.AuthorizeData))
 		return nil
 	}
 
