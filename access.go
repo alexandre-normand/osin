@@ -1,6 +1,7 @@
 package osin
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	"time"
@@ -14,6 +15,7 @@ const (
 	REFRESH_TOKEN                        = "refresh_token"
 	PASSWORD                             = "password"
 	CLIENT_CREDENTIALS                   = "client_credentials"
+	ASSERTION                            = "assertion"
 	IMPLICIT                             = "__implicit"
 )
 
@@ -28,6 +30,8 @@ type AccessRequest struct {
 	Scope         string
 	Username      string
 	Password      string
+	AssertionType string
+	Assertion     string
 
 	// Set if request is authorized
 	Authorized bool
@@ -96,16 +100,19 @@ func (s *Server) HandleAccessRequest(w *Response, r *http.Request) *AccessReques
 	if r.Method == "GET" {
 		if !s.Config.AllowGetAccessRequest {
 			w.SetError(E_INVALID_REQUEST, "GET request is not allowed")
+			w.InternalError = errors.New("Request must be POST")
 			return nil
 		}
 	} else if r.Method != "POST" {
 		w.SetError(E_INVALID_REQUEST, fmt.Sprintf("Invalid method [%s], only GET and POST requests are allowed", r.Method))
+		w.InternalError = errors.New("Request must be POST")
 		return nil
 	}
 
 	err := r.ParseForm()
 	if err != nil {
 		w.SetError(E_INVALID_REQUEST, fmt.Sprintf("Error parsing form: [%v]", err))
+		w.InternalError = err
 		return nil
 	}
 
@@ -120,6 +127,8 @@ func (s *Server) HandleAccessRequest(w *Response, r *http.Request) *AccessReques
 			return s.handlePasswordRequest(w, r)
 		case CLIENT_CREDENTIALS:
 			return s.handleClientCredentialsRequest(w, r)
+		case ASSERTION:
+			return s.handleAssertionRequest(w, r)
 		}
 	}
 
@@ -162,6 +171,10 @@ func (s *Server) handleAuthorizationCodeRequest(w *Response, r *http.Request) *A
 		w.InternalError = err
 		return nil
 	}
+	if ret.AuthorizeData == nil {
+		w.SetError(E_UNAUTHORIZED_CLIENT, "")
+		return nil
+	}
 	if ret.AuthorizeData.Client == nil {
 		w.SetError(E_UNAUTHORIZED_CLIENT, fmt.Sprintf("No client for authorize data: [%v]", ret.AuthorizeData))
 		return nil
@@ -192,6 +205,7 @@ func (s *Server) handleAuthorizationCodeRequest(w *Response, r *http.Request) *A
 	}
 	if ret.AuthorizeData.RedirectUri != ret.RedirectUri {
 		w.SetError(E_INVALID_REQUEST, fmt.Sprintf("Mismatch between authorize data's redirect uri [%s] and token's redirect uri [%s]", ret.AuthorizeData.RedirectUri, ret.RedirectUri))
+		w.InternalError = errors.New("Redirect uri is different")
 		return nil
 	}
 
@@ -237,6 +251,10 @@ func (s *Server) handleRefreshTokenRequest(w *Response, r *http.Request) *Access
 		w.InternalError = err
 		return nil
 	}
+	if ret.AccessData == nil {
+		w.SetError(E_UNAUTHORIZED_CLIENT, "")
+		return nil
+	}
 	if ret.AccessData.Client == nil {
 		w.SetError(E_UNAUTHORIZED_CLIENT, fmt.Sprintf("No client for access data: [%v]", ret.AccessData))
 		return nil
@@ -249,6 +267,7 @@ func (s *Server) handleRefreshTokenRequest(w *Response, r *http.Request) *Access
 	// client must be the same as the previous token
 	if ret.AccessData.Client.Id != ret.Client.Id {
 		w.SetError(E_INVALID_CLIENT, fmt.Sprintf("Client id doesn't match, expected [%s] but got [%s]", ret.Client.Id, ret.AccessData.Client.Id))
+		w.InternalError = errors.New("Client id must be the same from previous token")
 		return nil
 
 	}
@@ -310,6 +329,40 @@ func (s *Server) handleClientCredentialsRequest(w *Response, r *http.Request) *A
 		Scope:           r.Form.Get("scope"),
 		GenerateRefresh: true,
 		Expiration:      s.Config.AccessExpiration,
+	}
+
+	// must have a valid client
+	if ret.Client = getClient(auth, s.Storage, w, r); ret.Client == nil {
+		return nil
+	}
+
+	// set redirect uri
+	ret.RedirectUri = ret.Client.RedirectUri
+
+	return ret
+}
+
+func (s *Server) handleAssertionRequest(w *Response, r *http.Request) *AccessRequest {
+	// get client authentication
+	auth := getClientAuth(w, r, s.Config.AllowClientSecretInParams)
+	if auth == nil {
+		return nil
+	}
+
+	// generate access token
+	ret := &AccessRequest{
+		Type:            ASSERTION,
+		Scope:           r.Form.Get("scope"),
+		AssertionType:   r.Form.Get("assertion_type"),
+		Assertion:       r.Form.Get("assertion"),
+		GenerateRefresh: false, // assertion should NOT generate a refresh token, per the RFC
+		Expiration:      s.Config.AccessExpiration,
+	}
+
+	// "assertion_type" and "assertion" is required
+	if ret.AssertionType == "" || ret.Assertion == "" {
+		w.SetError(E_INVALID_GRANT, "")
+		return nil
 	}
 
 	// must have a valid client
