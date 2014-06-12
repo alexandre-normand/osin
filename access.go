@@ -158,7 +158,7 @@ func (s *Server) handleAuthorizationCodeRequest(w *Response, r *http.Request) *A
 	var err error
 	ret.AuthorizeData, err = s.Storage.LoadAuthorize(ret.Code, r)
 	if err != nil {
-		w.SetError(E_INVALID_GRANT, "")
+		w.SetError(E_INVALID_GRANT, err.Error())
 		w.InternalError = err
 		return nil
 	}
@@ -220,7 +220,7 @@ func (s *Server) handleRefreshTokenRequest(w *Response, r *http.Request) *Access
 
 	// "refresh_token" is required
 	if ret.Code == "" {
-		w.SetError(E_INVALID_GRANT, "")
+		w.SetError(E_INVALID_GRANT, "refresh_token is required but missing")
 		return nil
 	}
 
@@ -233,7 +233,7 @@ func (s *Server) handleRefreshTokenRequest(w *Response, r *http.Request) *Access
 	var err error
 	ret.AccessData, err = s.Storage.LoadRefresh(ret.Code, r)
 	if err != nil {
-		w.SetError(E_INVALID_GRANT, "")
+		w.SetError(E_INVALID_GRANT, err.Error())
 		w.InternalError = err
 		return nil
 	}
@@ -282,7 +282,7 @@ func (s *Server) handlePasswordRequest(w *Response, r *http.Request) *AccessRequ
 
 	// "username" and "password" is required
 	if ret.Username == "" || ret.Password == "" {
-		w.SetError(E_INVALID_GRANT, "")
+		w.SetError(E_INVALID_GRANT, "username and password and required")
 		return nil
 	}
 
